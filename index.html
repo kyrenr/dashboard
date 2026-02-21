@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>T212 Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080810;
+  --s1: #0f0f1a;
+  --s2: #161625;
+  --s3: #1e1e30;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.1);
+  --green: #00e5a0;
+  --green-dim: rgba(0,229,160,0.12);
+  --red: #ff4d6d;
+  --red-dim: rgba(255,77,109,0.12);
+  --amber: #ffb830;
+  --amber-dim: rgba(255,184,48,0.12);
+  --purple: #7c6dfa;
+  --purple-dim: rgba(124,109,250,0.12);
+  --text: #e2e2ee;
+  --muted: #5a5a72;
+  --muted2: #8888a8;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  padding-bottom: 100px;
+}
+
+/* ── PIN SCREEN ── */
+.pin-screen {
+  position:fixed; inset:0; background:var(--bg);
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; z-index:9999; padding:40px 20px;
+}
+.pin-title {
+  font-family:'Syne',sans-serif; font-size:22px; font-weight:700;
+  letter-spacing:.04em; margin-bottom:8px;
+}
+.pin-sub {
+  color:var(--muted2); font-size:12px; margin-bottom:40px;
+}
+.pin-dots {
+  display:flex; gap:16px; margin-bottom:40px;
+}
+.pin-dot {
+  width:16px; height:16px; border-radius:50%;
+  border:2px solid var(--border2); background:transparent;
+  transition:all .15s;
+}
+.pin-dot.filled { background:var(--green); border-color:var(--green); }
+.pin-dot.error { background:var(--red); border-color:var(--red); }
+.pin-pad {
+  display:grid; grid-template-columns:repeat(3,72px);
+  gap:12px;
+}
+.pin-key {
+  width:72px; height:72px; border-radius:50%;
+  border:1px solid var(--border2); background:var(--s2);
+  color:var(--text); font-family:'Syne',sans-serif;
+  font-size:22px; font-weight:600; cursor:pointer;
+  transition:all .1s; display:flex; align-items:center; justify-content:center;
+}
+.pin-key:active { background:var(--s3); transform:scale(0.93); }
+.pin-key.del { font-size:18px; color:var(--muted2); }
+.pin-key.empty { background:transparent; border:none; cursor:default; }
+.pin-err { color:var(--red); font-size:12px; margin-top:16px; min-height:18px; }
+
+/* ── TABS ── */
+.tab-nav {
+  display:flex; gap:4px; margin:16px 0 20px;
+  background:var(--s2); border-radius:12px; padding:4px;
+}
+.tab-btn {
+  flex:1; padding:9px 0; border:none; border-radius:9px;
+  background:transparent; color:var(--muted2);
+  font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.06em;
+  cursor:pointer; transition:all .2s;
+}
+.tab-btn.active {
+  background:var(--s3); color:var(--text);
+}
+.tab-section { display:none; }
+.tab-section.active { display:block; }
+
+/* ── HISTORY CHART ── */
+.chart-wrap {
+  background:var(--s1); border:1px solid var(--border);
+  border-radius:16px; padding:16px; margin-bottom:16px;
+}
+.chart-title {
+  font-size:11px; letter-spacing:.08em; color:var(--muted2);
+  text-transform:uppercase; margin-bottom:12px;
+}
+.chart-canvas-wrap { position:relative; height:180px; }
+canvas { width:100% !important; }
+.chart-empty {
+  text-align:center; color:var(--muted); font-size:12px;
+  padding:40px 0;
+}
+.pie-selector {
+  display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;
+}
+.pie-sel-btn {
+  padding:5px 10px; border-radius:20px; border:1px solid var(--border2);
+  background:transparent; color:var(--muted2);
+  font-family:'DM Mono',monospace; font-size:10px; cursor:pointer;
+}
+.pie-sel-btn.active {
+  background:var(--purple-dim); border-color:var(--purple); color:var(--purple);
+}
+.history-stats {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;
+}
+.hstat {
+  background:var(--s2); border-radius:10px; padding:10px 12px;
+}
+.hstat-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.hstat-val { font-size:15px; color:var(--text); margin-top:3px; }
+
+body::after {
+  content:'';
+  position:fixed;
+  inset:0;
+  background: radial-gradient(ellipse 80% 40% at 50% -10%, rgba(124,109,250,0.06) 0%, transparent 70%);
+  pointer-events:none;
+  z-index:0;
+}
+
+.wrap { max-width:460px; margin:0 auto; padding:0 14px; position:relative; z-index:1; }
+
+/* ── HEADER ── */
+header {
+  padding: 26px 0 18px;
+  margin-bottom: 6px;
+}
+.hdr-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+.wordmark {
+  font-family:'Syne',sans-serif;
+  font-size:11px; font-weight:700;
+  letter-spacing:0.22em;
+  color:var(--muted2);
+  text-transform:uppercase;
+}
+.status-pill {
+  display:flex; align-items:center; gap:5px;
+  font-size:9px; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--muted2);
+  background:var(--s2);
+  border:1px solid var(--border2);
+  padding:4px 10px; border-radius:20px;
+}
+.dot {
+  width:5px;height:5px;border-radius:50%;
+  background:var(--green);
+  animation:blink 2.2s infinite;
+}
+.dot.amber { background:var(--amber); }
+.dot.red { background:var(--red); animation:none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.total-lbl { font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+.total-num {
+  font-family:'Syne',sans-serif;
+  font-size:44px; font-weight:800; letter-spacing:-0.03em; line-height:1;
+  background: linear-gradient(120deg, #fff 30%, var(--green));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.total-sub { display:flex; gap:14px; margin-top:9px; font-size:12px; }
+.pos { color:var(--green); }
+.neg { color:var(--red); }
+.neu { color:var(--amber); }
+.updated { font-size:9px; color:var(--muted); margin-top:5px; letter-spacing:0.05em; }
+
+/* ── SECTION LABEL ── */
+.slbl {
+  font-size:9px; letter-spacing:0.2em; text-transform:uppercase;
+  color:var(--muted); margin: 24px 0 10px 2px;
+}
+
+/* ── RAG SUMMARY BAR ── */
+.rag-bar {
+  display:grid; grid-template-columns:1fr 1fr 1fr;
+  gap:8px; margin-bottom:20px;
+}
+.rag-cell {
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 10px;
+  text-align:center;
+}
+.rag-cell.g { border-color:rgba(0,229,160,0.2); background:var(--green-dim); }
+.rag-cell.a { border-color:rgba(255,184,48,0.2); background:var(--amber-dim); }
+.rag-cell.r { border-color:rgba(255,77,109,0.2); background:var(--red-dim); }
+.rag-num {
+  font-family:'Syne',sans-serif;
+  font-size:26px; font-weight:800; line-height:1;
+}
+.rag-cell.g .rag-num { color:var(--green); }
+.rag-cell.a .rag-num { color:var(--amber); }
+.rag-cell.r .rag-num { color:var(--red); }
+.rag-lbl { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); margin-top:3px; }
+
+/* ── PIE CARDS ── */
+.pie-card {
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:14px;
+  margin-bottom:9px;
+  overflow:hidden;
+  transition: border-color 0.2s;
+}
+.pie-card.health-g { border-left:3px solid var(--green); }
+.pie-card.health-a { border-left:3px solid var(--amber); }
+.pie-card.health-r { border-left:3px solid var(--red); }
+
+.pie-top {
+  padding:14px 14px 10px;
+  cursor:pointer;
+}
+.pie-row1 { display:flex; justify-content:space-between; align-items:flex-start; }
+.pie-name-wrap { flex:1; }
+.pie-name {
+  font-family:'Syne',sans-serif;
+  font-size:14px; font-weight:700;
+  line-height:1.2;
+}
+.rag-badge {
+  font-size:8px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase;
+  padding:3px 8px; border-radius:20px; margin-left:6px;
+  vertical-align:middle;
+}
+.rag-badge.g { background:var(--green-dim); color:var(--green); }
+.rag-badge.a { background:var(--amber-dim); color:var(--amber); }
+.rag-badge.r { background:var(--red-dim); color:var(--red); }
+
+.pie-val {
+  font-family:'Syne',sans-serif;
+  font-size:16px; font-weight:700;
+  white-space:nowrap; margin-left:10px;
+}
+
+.pie-row2 {
+  display:flex; justify-content:space-between;
+  margin-top:7px; font-size:11px; color:var(--muted2);
+}
+.pie-pl { font-size:11px; }
+
+.pie-progress { margin:10px 14px 0; height:2px; background:var(--border); border-radius:2px; overflow:hidden; }
+.pie-prog-fill { height:100%; border-radius:2px; transition:width 0.7s ease; }
+.health-g .pie-prog-fill { background:linear-gradient(90deg, var(--purple), var(--green)); }
+.health-a .pie-prog-fill { background:linear-gradient(90deg, var(--purple), var(--amber)); }
+.health-r .pie-prog-fill { background:linear-gradient(90deg, var(--red), var(--amber)); }
+
+/* Holdings */
+.pie-expand {
+  display:none;
+  border-top:1px solid var(--border);
+  padding:12px 14px;
+  background:var(--s2);
+}
+.pie-card.open .pie-expand { display:block; }
+.pie-card.open { border-color: rgba(124,109,250,0.2); }
+
+.holding-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:5px 0;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  font-size:11px;
+}
+.holding-row:last-child { border-bottom:none; }
+.h-name { flex:1; color:var(--text); }
+.h-wt { color:var(--muted); width:38px; text-align:right; }
+.h-pl { width:60px; text-align:right; }
+
+/* Per-pie Claude button */
+.pie-claude-btn {
+  width:100%; margin-top:12px;
+  background:transparent;
+  border:1px solid rgba(124,109,250,0.3);
+  border-radius:8px;
+  color:var(--purple);
+  font-family:'DM Mono',monospace;
+  font-size:11px;
+  padding:9px;
+  cursor:pointer;
+  transition:all 0.2s;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+}
+.pie-claude-btn:hover { background:var(--purple-dim); border-color:rgba(124,109,250,0.5); }
+.pie-claude-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.mini-spin {
+  width:12px;height:12px;
+  border:1.5px solid rgba(124,109,250,0.3);
+  border-top-color:var(--purple);
+  border-radius:50%;
+  animation:spin 0.7s linear infinite;
+  display:none;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.pie-analysis {
+  margin-top:10px;
+  background:var(--s3);
+  border:1px solid rgba(124,109,250,0.15);
+  border-radius:8px;
+  padding:12px;
+  font-size:11px;
+  line-height:1.7;
+  color:var(--text);
+  white-space:pre-wrap;
+  display:none;
+}
+.pie-analysis.show { display:block; }
+.analysis-hdr {
+  font-size:9px; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--purple); margin-bottom:8px;
+  display:flex; justify-content:space-between;
+}
+
+/* ── ACTION BRIEF ── */
+.brief-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:16px;
+}
+.brief-title {
+  font-family:'Syne',sans-serif;
+  font-size:11px; font-weight:700; letter-spacing:0.12em;
+  text-transform:uppercase; color:var(--muted);
+}
+/* ── ACTION BRIEF — PIE CARDS ── */
+
+/* Empty state */
+.brief-empty {
+  text-align:center; padding:40px 16px;
+  color:var(--muted); font-size:12px; line-height:1.8;
+}
+.brief-empty-icon { font-size:32px; margin-bottom:10px; }
+
+/* One card per pie */
+.ab-pie-section {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: opacity 0.3s, border-color 0.3s;
+}
+.ab-pie-section.ab-complete {
+  opacity: 0.45;
+  border-color: rgba(0,229,160,0.25);
+}
+
+/* Two-column card: left = name+tick, right = action list */
+.ab-card-inner {
+  display: flex;
+  align-items: stretch;
+}
+
+/* LEFT: pie name + checkbox */
+.ab-pie-left-col {
+  width: 96px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 14px 8px;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 0.15s;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.ab-pie-left-col:active { background: var(--s2); }
+
+/* Big circular checkbox */
+.ab-pie-checkbox {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, border-color 0.2s;
+}
+.ab-pie-section.ab-complete .ab-pie-checkbox {
+  background: var(--green);
+  border-color: var(--green);
+}
+.ab-pie-check-tick {
+  display: none;
+  color: #080810;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+}
+.ab-pie-section.ab-complete .ab-pie-check-tick { display: block; }
+
+/* Pie name under checkbox */
+.ab-pie-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 9px; font-weight: 700;
+  color: var(--muted2);
+  line-height: 1.35;
+  word-break: break-word;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ab-pie-section.ab-complete .ab-pie-label { color: var(--green); }
+
+/* RIGHT: list of actions */
+.ab-pie-right-col {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Single action row */
+.ab-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  min-height: 42px;
+}
+.ab-row:last-child { border-bottom: none; }
+
+/* SELL / TRIM / BUY pill */
+.ab-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px; font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+.ab-pill-sell   { background: var(--red-dim);    color: var(--red); }
+.ab-pill-reduce { background: var(--amber-dim);  color: var(--amber); }
+.ab-pill-buy    { background: var(--green-dim);  color: var(--green); }
+
+/* Holding name */
+.ab-stock-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px; font-weight: 700;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* X% → Y% */
+.ab-pct-change {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.ab-pct-change.down { color: var(--red); }
+.ab-pct-change.up   { color: var(--green); }
+
+/* Priority block */
+.ab-priority {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: var(--purple-dim);
+  border: 1px solid rgba(124,109,250,0.2);
+  border-radius: 12px; padding: 13px 14px;
+  margin-top: 6px;
+}
+.ab-priority-star { color: var(--purple); font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.ab-priority-text { font-size: 12px; color: var(--text); line-height: 1.55; font-family: 'DM Mono', monospace; }
+
+/* Top bar */
+.brief-progress span { color: var(--green); font-weight: 700; }
+
+/* check-tag kept for backwards compat */
+.check-tag { display:none; }
+.ct-sell,.ct-buy,.ct-move,.ct-reduce { display:none; }
+
+/* ── ACTION BRIEF — PIE GROUPS ── */
+.ab-pie-section {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: opacity 0.3s;
+}
+.ab-pie-section.ab-complete { opacity: 0.6; }
+
+/* Pie header */
+.ab-pie-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 14px; cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.ab-pie-hdr:hover { background: var(--s2); }
+.ab-pie-left { flex: 1; }
+.ab-pie-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px; font-weight: 700; color: var(--fg);
+  margin-bottom: 4px;
+}
+.ab-pie-progress { display: flex; align-items: center; gap: 8px; }
+.ab-pct-track {
+  width: 80px; height: 3px;
+  background: var(--border); border-radius: 3px;
+  position: relative; overflow: hidden;
+}
+.ab-pct-fill {
+  height: 100%; border-radius: 3px;
+  background: var(--green);
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+.ab-pct-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px; color: var(--muted);
+}
+.ab-pie-count {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px; color: var(--muted);
+}
+.ab-complete-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px; font-weight: 700;
+  color: var(--green); letter-spacing: 0.05em;
+}
+.ab-pie-chevron {
+  font-size: 18px; color: var(--muted);
+  transition: transform 0.25s; margin-left: 8px;
+  transform: rotate(90deg);
+}
+.ab-pie-chevron.collapsed { transform: rotate(0deg); }
+
+/* Pie body (collapsible) */
+.ab-pie-body { padding: 4px 0; }
+.ab-pie-body.collapsed { display: none; }
+
+/* Action row */
+.ab-action {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 11px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  transition: background 0.15s;
+  position: relative;
+}
+.ab-action:last-child { border-bottom: none; }
+.ab-action:hover { background: var(--s2); }
+.ab-action.done { opacity: 0.38; }
+.ab-action.done .ab-holding { text-decoration: line-through; }
+
+/* Left stripe */
+.ab-action::before {
+  content: ''; position: absolute;
+  left: 0; top: 8px; bottom: 8px;
+  width: 2px; border-radius: 1px;
+}
+.ab-sell::before  { background: var(--red); }
+.ab-reduce::before { background: var(--amber); }
+.ab-buy::before   { background: var(--green); }
+
+/* Checkbox circle */
+.ab-action-check {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+  transition: all 0.2s;
+}
+.ab-action.done .ab-action-check {
+  background: var(--green); border-color: var(--green);
+}
+.ab-tick { display: none; color: #000; font-size: 10px; font-weight: 900; }
+.ab-action.done .ab-tick { display: block; }
+
+.ab-action-body { flex: 1; min-width: 0; }
+
+/* Top row: verb + holding name */
+.ab-action-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+.ab-verb {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px; font-weight: 700; letter-spacing: 0.12em;
+  flex-shrink: 0;
+}
+.ab-sell .ab-verb  { color: var(--red); }
+.ab-reduce .ab-verb { color: var(--amber); }
+.ab-buy .ab-verb   { color: var(--green); }
+.ab-holding {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px; font-weight: 700;
+  color: var(--fg); line-height: 1.2;
+}
+
+/* Percentage change row */
+.ab-pct-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 4px;
+}
+.ab-from {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--muted);
+  min-width: 28px; text-align: right;
+}
+.ab-arrow { font-size: 11px; color: var(--muted2); }
+.ab-to {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px; font-weight: 700; min-width: 28px;
+}
+.ab-to-zero  { color: var(--red); }
+.ab-to-up    { color: var(--green); }
+.ab-to-down  { color: var(--amber); }
+
+/* Visual before/after bars */
+.ab-bar-wrap {
+  flex: 1; height: 4px; background: var(--border);
+  border-radius: 2px; position: relative; overflow: visible;
+  margin-left: 4px;
+}
+.ab-bar-from {
+  position: absolute; left: 0; top: 0; height: 100%;
+  background: var(--border2); border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.ab-bar-to {
+  position: absolute; left: 0; top: 0; height: 100%;
+  border-radius: 2px; opacity: 0.85;
+  transition: width 0.4s ease;
+}
+.ab-bar-to.up   { background: var(--green); }
+.ab-bar-to.down { background: var(--amber); }
+.ab-sell .ab-bar-to { background: var(--red); width: 0 !important; }
+
+.ab-reason {
+  font-size: 11px; color: var(--muted); line-height: 1.4;
+}
+
+/* Priority call */
+.ab-priority {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: rgba(124,109,250,0.07);
+  border: 1px solid rgba(124,109,250,0.2);
+  border-radius: 12px; padding: 14px;
+  margin-top: 4px;
+}
+.ab-priority-star {
+  color: var(--purple); font-size: 16px; flex-shrink: 0; margin-top: 1px;
+}
+.ab-priority-text {
+  font-size: 13px; color: var(--fg); line-height: 1.5;
+}
+
+/* ── OVERALL CLAUDE BTN ── */
+.main-claude-btn {
+  width:100%;
+  background:transparent;
+  border:1px solid var(--green);
+  border-radius:12px;
+  color:var(--green);
+  font-family:'Syne',sans-serif;
+  font-size:13px; font-weight:700; letter-spacing:0.04em;
+  padding:15px;
+  cursor:pointer;
+  margin-top:8px;
+  transition:all 0.2s;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+.main-claude-btn:hover { background:var(--green-dim); }
+.main-claude-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.main-spin {
+  width:16px;height:16px;
+  border:2px solid rgba(0,229,160,0.25);
+  border-top-color:var(--green);
+  border-radius:50%;
+  animation:spin 0.7s linear infinite;
+  display:none;
+}
+.main-claude-btn.loading .main-spin { display:block; }
+.main-claude-btn.loading .mbtn-txt { opacity:0.6; }
+
+.main-analysis {
+  margin-top:12px;
+  background:var(--s1);
+  border:1px solid rgba(0,229,160,0.15);
+  border-radius:14px;
+  overflow:hidden;
+  display:none;
+}
+.main-analysis.show { display:block; }
+.main-analysis-hdr {
+  background:var(--green-dim);
+  border-bottom:1px solid rgba(0,229,160,0.15);
+  padding:11px 14px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.main-analysis-title {
+  font-family:'Syne',sans-serif;
+  font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--green);
+}
+.main-analysis-date { font-size:9px; color:var(--muted2); }
+.main-analysis-body {
+  padding:14px;
+  font-size:12px; line-height:1.75;
+  color:var(--text);
+  white-space:pre-wrap;
+}
+
+/* ── SETUP ── */
+.setup-card {
+  background:var(--s1);
+  border:1px solid rgba(255,184,48,0.25);
+  border-radius:14px;
+  padding:18px;
+  margin-bottom:20px;
+  display:none;
+}
+.setup-ttl {
+  font-family:'Syne',sans-serif;
+  font-size:13px; font-weight:700; color:var(--amber); margin-bottom:10px;
+}
+.setup-note { font-size:10px; color:var(--muted2); line-height:1.65; margin-bottom:14px; }
+.sinput {
+  width:100%; background:var(--s2); border:1px solid var(--border2);
+  border-radius:8px; color:var(--text);
+  font-family:'DM Mono',monospace; font-size:12px;
+  padding:10px 12px; margin-bottom:8px; transition:border-color 0.2s;
+}
+.sinput:focus { outline:none; border-color:var(--amber); }
+.sbtn {
+  width:100%; background:var(--amber); border:none;
+  border-radius:8px; color:#000;
+  font-family:'Syne',sans-serif; font-size:12px; font-weight:700;
+  padding:11px; cursor:pointer; transition:opacity 0.2s;
+}
+.sbtn:hover { opacity:0.85; }
+.err-msg { font-size:10px; color:var(--red); margin-top:8px; display:none; }
+.err-msg.show { display:block; }
+
+/* Demo banner */
+.demo-bar {
+  background:var(--amber-dim);
+  border:1px solid rgba(255,184,48,0.2);
+  border-radius:10px; padding:9px 12px;
+  font-size:10px; color:var(--amber); text-align:center;
+  letter-spacing:0.05em; margin-bottom:14px; display:none;
+}
+
+/* refresh */
+.refresh-btn {
+  width:100%; background:none;
+  border:1px solid var(--border2); border-radius:8px;
+  color:var(--muted2); font-family:'DM Mono',monospace; font-size:10px;
+  padding:8px; cursor:pointer; margin-top:6px; transition:all 0.2s;
+}
+.refresh-btn:hover { border-color:var(--green); color:var(--green); }
+
+.footer {
+  text-align:center; font-size:9px; color:var(--muted);
+  margin-top:40px; padding-top:16px; border-top:1px solid var(--border);
+  line-height:2;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+<!-- PIN SCREEN -->
+<div class="pin-screen" id="pinScreen">
+  <div class="pin-title">T212 Monitor</div>
+  <div class="pin-sub">Enter your PIN to continue</div>
+  <div class="pin-dots" id="pinDots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-pad">
+    <button class="pin-key" onclick="pinPress('1')">1</button>
+    <button class="pin-key" onclick="pinPress('2')">2</button>
+    <button class="pin-key" onclick="pinPress('3')">3</button>
+    <button class="pin-key" onclick="pinPress('4')">4</button>
+    <button class="pin-key" onclick="pinPress('5')">5</button>
+    <button class="pin-key" onclick="pinPress('6')">6</button>
+    <button class="pin-key" onclick="pinPress('7')">7</button>
+    <button class="pin-key" onclick="pinPress('8')">8</button>
+    <button class="pin-key" onclick="pinPress('9')">9</button>
+    <button class="pin-key empty"></button>
+    <button class="pin-key" onclick="pinPress('0')">0</button>
+    <button class="pin-key del" onclick="pinDel()">⌫</button>
+  </div>
+  <div class="pin-err" id="pinErr"></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="hdr-top">
+    <div class="wordmark">T212 Monitor</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="showSettings()" style="background:none;border:1px solid var(--border2);border-radius:20px;color:var(--muted2);font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;cursor:pointer;">⚙ Settings</button>
+      <div class="status-pill"><div class="dot" id="statusDot"></div><span id="statusTxt">Connecting</span></div>
+    </div>
+  </div>
+  <div class="total-lbl">Total Portfolio Value</div>
+  <div class="total-num" id="grandTotal">£—</div>
+  <div class="total-sub">
+    <span id="totalPL">Loading...</span>
+  </div>
+  <div class="updated" id="updatedAt"></div>
+</header>
+
+<!-- SETUP -->
+<div class="setup-card" id="setupCard">
+  <div class="setup-ttl">⚙ Connect Trading212</div>
+  <div class="setup-note">
+    In Trading212 app: Settings → API → Generate Key.<br>
+    Enable: Account data, Metadata, Pies - Read.<br>
+    You get an API Key AND an API Secret - enter both below.
+  </div>
+  <input type="password" class="sinput" id="keyInput" placeholder="Trading212 API Key" autocomplete="off">
+  <input type="password" class="sinput" id="secretInput" placeholder="Trading212 API Secret" autocomplete="off">
+  <input type="password" class="sinput" id="claudeKeyInput" placeholder="Claude API Key (for analysis)" autocomplete="off">
+  <button class="sbtn" onclick="connectAPI()">Connect</button>
+  <button class="sbtn" style="background:rgba(255,77,109,0.15);border-color:rgba(255,77,109,0.3);margin-top:4px;" onclick="clearCache()">Clear cache &amp; reconnect</button>
+  <div class="err-msg" id="setupErr"></div>
+</div>
+
+<div class="demo-bar" id="demoBanner">⚡ Demo mode — add API key above for live data</div>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('portfolio')">Portfolio</button>
+  <button class="tab-btn" onclick="switchTab('history')">History</button>
+</div>
+
+<!-- PORTFOLIO TAB -->
+<div class="tab-section active" id="tab-portfolio">
+
+<!-- RAG SUMMARY -->
+<div class="slbl">Portfolio Health</div>
+<div class="rag-bar">
+  <div class="rag-cell g"><div class="rag-num" id="ragG">—</div><div class="rag-lbl">Healthy</div></div>
+  <div class="rag-cell a"><div class="rag-num" id="ragA">—</div><div class="rag-lbl">Watch</div></div>
+  <div class="rag-cell r"><div class="rag-num" id="ragR">—</div><div class="rag-lbl">Action</div></div>
+</div>
+
+<!-- PIES -->
+<div class="slbl">Your Pies</div>
+<div id="piesWrap"></div>
+<button class="refresh-btn" onclick="loadData()">↻ Refresh live data</button>
+
+<!-- OVERALL CLAUDE -->
+<div class="slbl" style="margin-top:28px;">Weekly Analysis</div>
+<button class="main-claude-btn" id="mainClaudeBtn" onclick="getOverallAnalysis()">
+  <div class="main-spin"></div>
+  <span class="mbtn-txt">✦ Analyse All Pies — Per Pie Breakdown</span>
+</button>
+<div class="main-analysis" id="mainAnalysis">
+  <div class="main-analysis-hdr">
+    <div class="main-analysis-title">✦ Weekly Review</div>
+    <div class="main-analysis-date" id="mainAnalysisDate"></div>
+  </div>
+  <div class="main-analysis-body" id="mainAnalysisBody"></div>
+</div>
+
+<!-- ACTION BRIEF -->
+<div style="margin-top:28px;">
+  <div class="brief-header">
+    <div class="brief-title">Action Brief</div>
+    <div class="brief-progress" id="checkProgress"><span>0</span> / 0 done</div>
+  </div>
+  <div class="brief-track">
+    <div class="brief-fill" id="checkBar" style="width:0%"></div>
+  </div>
+  <div id="checkItems">
+    <div class="brief-empty">
+      <div class="brief-empty-icon">✦</div>
+      Run <strong>Analyse All Pies</strong> above to generate your personalised action brief.
+    </div>
+  </div>
+</div>
+
+</div><!-- end tab-portfolio -->
+
+<!-- HISTORY TAB -->
+<div class="tab-section" id="tab-history">
+  <div class="chart-wrap">
+    <div class="chart-title">Total Portfolio Value</div>
+    <div class="chart-canvas-wrap">
+      <canvas id="totalChart"></canvas>
+      <div class="chart-empty" id="totalChartEmpty">Data builds up over time.<br>Check back after a few days.</div>
+    </div>
+    <div class="history-stats" id="historyStats"></div>
+  </div>
+
+  <div class="slbl">Individual Pies</div>
+  <div class="pie-selector" id="pieSelectorWrap"></div>
+  <div class="chart-wrap">
+    <div class="chart-title" id="pieChartTitle">Select a pie above</div>
+    <div class="chart-canvas-wrap">
+      <canvas id="pieChart"></canvas>
+      <div class="chart-empty" id="pieChartEmpty">Select a pie to view its history.</div>
+    </div>
+  </div>
+</div><!-- end tab-history -->
+
+<div class="footer">
+  Read-only · No trades executed<br>
+  API key stored locally in browser only<br>
+  Not financial advice
+</div>
+
+</div>
+
+<script>
+// ─── SAFE DOM HELPER ─────────────────────────────────────────────────────────
+function el(id) { return document.getElementById(id); }
+function setDisplay(id, val) { const e = el(id); if (e) e.style.display = val; }
+
+// ─── DEMO DATA ────────────────────────────────────────────────────────────────
+const DEMO = [
+  { id:1, name:"Tech n Things", value:15588.69, pl:2774.61, plPct:21.65,
+    instruments:[
+      {name:"ASML",wt:14.27,pl:92.93},{name:"Nvidia",wt:11.51,pl:40.06},
+      {name:"Alphabet",wt:10.29,pl:78.81},{name:"Apple",wt:8.8,pl:33.82},
+      {name:"TSMC",wt:7.66,pl:86.51},{name:"Microsoft",wt:7.28,pl:-11.48},
+      {name:"Amazon",wt:5.84,pl:1.47},{name:"Eli Lilly",wt:4.67,pl:42.05},
+      {name:"Shopify",wt:3.85,pl:17.27},{name:"Tesla",wt:2.92,pl:18.23},
+      {name:"Meta",wt:2.51,pl:1.85},{name:"Adobe",wt:2.09,pl:-36.43},
+      {name:"Berkshire",wt:3.26,pl:-0.77},{name:"HDFC Bank",wt:2.99,pl:-9.07},
+      {name:"Infosys",wt:2.64,pl:-19.67},{name:"Novo Nordisk",wt:2.26,pl:-31.12},
+      {name:"ServiceNow",wt:1.78,pl:-45.79},{name:"LVMH",wt:1.84,pl:12.40},
+      {name:"NextEra",wt:2.23,pl:35.42},{name:"Palo Alto",wt:1.31,pl:-19.67}
+    ]},
+  { id:2, name:"Core Investments", value:11933.91, pl:1892.78, plPct:18.93,
+    instruments:[
+      {name:"WisdomTree US Quality",wt:14.8,pl:17.40},{name:"iShares Core Global",wt:11.44,pl:1.37},
+      {name:"WisdomTree Enhanced",wt:12.33,pl:22.13},{name:"WT Physical Gold",wt:10.2,pl:51.54},
+      {name:"iShares MBS",wt:6.68,pl:8.01},{name:"WT US Equity Income",wt:6.73,pl:25.45}
+    ]},
+  { id:3, name:"BRICS Pie", value:11674.44, pl:1418.60, plPct:13.83,
+    instruments:[
+      {name:"MSCI Taiwan",wt:16.19,pl:27.34},{name:"MSCI Mexico",wt:15.89,pl:33.02},
+      {name:"Vietnam Swap",wt:16.06,pl:9.07},{name:"MSCI India",wt:15.78,pl:-2.95},
+      {name:"MSCI Saudi Arabia",wt:8.96,pl:6.01},{name:"MSCI Indonesia",wt:9.02,pl:-8.03},
+      {name:"MSCI Brazil",wt:8.03,pl:44.58},{name:"MSCI China",wt:8.05,pl:13.49},
+      {name:"MSCI South Africa",wt:2.02,pl:54.09}
+    ]},
+  { id:4, name:"War Pie", value:6601.36, pl:1429.01, plPct:28.03,
+    instruments:[
+      {name:"BAE Systems",wt:7.08,pl:16.27},{name:"Rheinmetall",wt:6.39,pl:0.66},
+      {name:"Elbit Systems",wt:6.65,pl:61.25},{name:"AeroVironment",wt:4.67,pl:61.10},
+      {name:"Palantir",wt:3.66,pl:6.88},{name:"CrowdStrike",wt:4.86,pl:-7.97},
+      {name:"General Dynamics",wt:4.62,pl:24.94},{name:"RTX Corp",wt:3.27,pl:51.69}
+    ]},
+  { id:5, name:"Nuclear & Uranium", value:880.70, pl:380.70, plPct:76.14,
+    instruments:[
+      {name:"WT Uranium",wt:27.21,pl:92.07},{name:"Sprott Uranium Miners",wt:25.36,pl:78.98},
+      {name:"Global X Uranium",wt:24.41,pl:72.32},{name:"VanEck Nuclear",wt:23.02,pl:62.49}
+    ]},
+  { id:6, name:"Hypergrowth Pie", value:491.27, pl:-206.41, plPct:-29.59,
+    instruments:[
+      {name:"IonQ",wt:33.98,pl:-39.50},{name:"D-Wave Quantum",wt:26.6,pl:7.56},
+      {name:"Hive Digital",wt:19.53,pl:-1.04},{name:"Strategy (MSTR)",wt:10.75,pl:-66.79},
+      {name:"Rigetti",wt:9.15,pl:3.61}
+    ]},
+  { id:7, name:"Wallstreetbets 2026", value:6.28, pl:0.03, plPct:0.48,
+    instruments:[
+      {name:"AST SpaceMobile",wt:17.01,pl:0.94},{name:"IREN",wt:16.85,pl:0},
+      {name:"Micron",wt:16.69,pl:-0.94},{name:"Reddit",wt:16.69,pl:-0.94},
+      {name:"Nebius Group",wt:16.53,pl:4.00},{name:"Rocket Lab",wt:16.22,pl:2.00}
+    ]},
+];
+
+// ─── RESTRUCTURE CHECKLIST ────────────────────────────────────────────────────
+const CHECKLIST = [
+  { id:"c1",  action:"Sell Adobe",          tag:"sell",   pie:"Tech n Things",    note:"Thesis broken — AI destroying moat" },
+  { id:"c2",  action:"Sell Infosys",         tag:"sell",   pie:"Tech n Things",    note:"AI disrupting its core business" },
+  { id:"c3",  action:"Sell Novo Nordisk",    tag:"sell",   pie:"Tech n Things",    note:"You own Lilly — redundant" },
+  { id:"c4",  action:"Sell Strategy (MSTR)", tag:"sell",   pie:"Hypergrowth Pie",  note:"Leveraged Bitcoin proxy — not tech" },
+  { id:"c5",  action:"Sell IonQ",            tag:"sell",   pie:"Hypergrowth Pie",  note:"Too early stage, burning cash" },
+  { id:"c6",  action:"Sell IREN",            tag:"sell",   pie:"Wallstreetbets",   note:"Bitcoin mining — no structural edge" },
+  { id:"c7",  action:"Sell MSCI Indonesia",  tag:"sell",   pie:"BRICS Pie",        note:"Thesis not converting to returns" },
+  { id:"c8",  action:"Reduce Microsoft → 5%",tag:"reduce", pie:"Tech n Things",    note:"Redeploy into Nvidia" },
+  { id:"c9",  action:"Reduce Tesla → 2%",    tag:"reduce", pie:"Tech n Things",    note:"Speculative only" },
+  { id:"c10", action:"Increase Nvidia → 15%",tag:"buy",    pie:"Tech n Things",    note:"Core AI holding" },
+  { id:"c11", action:"Increase Amazon → 10%",tag:"buy",    pie:"Tech n Things",    note:"AWS + Bedrock underpriced" },
+  { id:"c12", action:"Increase Meta → 5%",   tag:"buy",    pie:"Tech n Things",    note:"Underweight — AI ad machine" },
+  { id:"c13", action:"Increase Palo Alto → 4%",tag:"buy",  pie:"Tech n Things",    note:"Buy the dip — thesis intact" },
+  { id:"c14", action:"Add Vertiv (VRT)",      tag:"buy",    pie:"Tech n Things",    note:"AI data centre infrastructure" },
+  { id:"c15", action:"Add Broadcom (AVGO)",   tag:"buy",    pie:"Tech n Things",    note:"Custom AI chips + networking" },
+  { id:"c16", action:"Add Salesforce (CRM)",  tag:"buy",    pie:"Tech n Things",    note:"Agentforce AI — enterprise play" },
+  { id:"c17", action:"Add South Korea ETF",   tag:"buy",    pie:"BRICS Pie",        note:"Samsung + SK Hynix HBM memory" },
+  { id:"c18", action:"Add UAE ETF",           tag:"buy",    pie:"BRICS Pie",        note:"Sovereign AI investment hub" },
+  { id:"c19", action:"Move Berkshire → Core", tag:"move",   pie:"Tech n Things",    note:"Wrong pie — not a tech stock" },
+  { id:"c20", action:"Move HDFC Bank → BRICS",tag:"move",   pie:"Tech n Things",    note:"Belongs in emerging markets" },
+  { id:"c21", action:"Move NextEra → Nuclear",tag:"move",   pie:"Tech n Things",    note:"Energy stock in wrong pie" },
+  { id:"c22", action:"Move LVMH → Core",      tag:"move",   pie:"Tech n Things",    note:"Luxury goods — wrong pie" },
+  { id:"c23", action:"Add Cameco (CCO)",       tag:"buy",    pie:"Nuclear Pie",      note:"World's largest uranium producer" },
+  { id:"c24", action:"Increase Rheinmetall",   tag:"buy",    pie:"War Pie",          note:"EU defence sovereignty leader" },
+  { id:"c25", action:"Increase Saab",          tag:"buy",    pie:"War Pie",          note:"Sweden in NATO = order surge" },
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let pies = [];
+let demoMode = false;
+let checkState = {};
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+let appInited = false;
+function initApp() {
+  if (appInited) return;
+  appInited = true;
+  checkState = JSON.parse(localStorage.getItem('checkState') || '{}');
+  // Version bust — clears stale data from old builds or format changes
+  const BRIEF_VERSION = '4';
+  let needsBust = localStorage.getItem('brief_version') !== BRIEF_VERSION;
+  try {
+    if (localStorage.getItem('dynamic_checklist')) needsBust = true;
+    const ob = JSON.parse(localStorage.getItem('action_brief') || 'null');
+    if (ob && (!ob.actions || (ob.actions[0] && !ob.actions[0].pie))) needsBust = true;
+  } catch(e) { needsBust = true; }
+  if (needsBust) {
+    ['action_brief','brief_state','dynamic_checklist','dynamic_check_state',
+     'main_analysis','pie_analyses'].forEach(function(k){ localStorage.removeItem(k); });
+    localStorage.setItem('brief_version', BRIEF_VERSION);
+  }
+
+  // Load action brief if it exists, otherwise show empty state
+  const savedBrief = localStorage.getItem('action_brief');
+  if (savedBrief) {
+    try { renderActionBrief(JSON.parse(savedBrief)); } catch(e) { renderChecklist(); }
+  } else {
+    renderChecklist();
+  }
+  const auth = localStorage.getItem('t212_auth');
+  const claudeKeySaved = localStorage.getItem('claude_key') || '';
+  if (claudeKeySaved) {
+    const el = document.getElementById('claudeKeyInput');
+    if (el) el.value = claudeKeySaved;
+  }
+  if (auth) {
+    setDisplay('setupCard','none');
+    loadData();
+  } else {
+    setDisplay('setupCard','block');
+    showDemo();
+  }
+  loadSavedAnalysis();
+}
+
+// ─── API CONNECT ─────────────────────────────────────────────────────────────
+function connectAPI() {
+  const key = document.getElementById('keyInput').value.trim();
+  const secret = document.getElementById('secretInput').value.trim();
+  const claudeKey = document.getElementById('claudeKeyInput').value.trim();
+
+  // Only update T212 auth if both fields are filled — otherwise keep existing
+  const existingAuth = localStorage.getItem('t212_auth');
+  if (key && secret) {
+    const encoded = btoa(key + ':' + secret);
+    localStorage.setItem('t212_auth', 'Basic ' + encoded);
+  } else if (!existingAuth) {
+    showErr('setupErr', 'Enter your Trading212 API Key and Secret');
+    return;
+  }
+
+  // Always update Claude key if provided
+  if (claudeKey) localStorage.setItem('claude_key', claudeKey);
+
+  setDisplay('setupCard','none');
+  setStatus('loading');
+  loadData();
+}
+
+function clearCache() {
+  localStorage.clear();
+  document.getElementById('keyInput').value = '';
+  document.getElementById('secretInput').value = '';
+  document.getElementById('claudeKeyInput').value = '';
+  showErr('setupErr', 'All cache cleared. Enter your keys and reconnect.');
+}
+
+function showSettings() {
+  // Pre-fill Claude key
+  const claudeKey = localStorage.getItem('claude_key') || '';
+  if (claudeKey) document.getElementById('claudeKeyInput').value = claudeKey;
+  // Show setup card — T212 fields left blank intentionally for security
+  // User only needs to re-enter if they want to change them
+  setDisplay('setupCard','block');
+  window.scrollTo(0, 0);
+}
+
+// ─── LOAD DATA ────────────────────────────────────────────────────────────────
+function buildAndRenderPies(detailed, listById, cachedNames, data) {
+  const knownNames = {
+    4457697: 'Core Investments',
+    4457703: 'War Pie',
+    4457710: 'BRICS Pie',
+    4457728: 'Hypergrowth Pie',
+    4457749: 'Nuclear & Uranium Pie',
+    4457823: 'Tech n Things',
+    7056221: 'Wallstreetbets 2026'
+  };
+
+  pies = detailed.map((p, idx) => {
+    const listItem = listById[p.id] || listById[data[idx]?.id] || {};
+    const merged = Object.assign({}, listItem, p);
+    const pieId = merged.id || data[idx]?.id;
+
+    const name = merged.settings?.name
+      || merged.name
+      || listItem.settings?.name
+      || listItem.name
+      || cachedNames[pieId]
+      || knownNames[pieId]
+      || `Pie ${pieId || idx + 1}`;
+
+    const result = merged.result || listItem.result || {};
+    const cash = merged.cash ?? listItem.cash ?? 0;
+    const value = (result.priceAvgValue ?? 0) + cash;
+    const pl = result.priceAvgResult ?? 0;
+    const plCoef = result.priceAvgResultCoef ?? 0;
+    const plPct = plCoef * 100;
+
+    const rawInstruments = merged.instruments || merged.holdings || listItem.instruments || [];
+    const instruments = rawInstruments.map(i => ({
+      name: cleanTicker(i.ticker || i.fullName || i.name || i.symbol || 'Unknown'),
+      wt: (i.currentShare ?? i.targetShare ?? i.weight ?? 0) * 100,
+      pl: ((i.result?.priceAvgResultCoef ?? i.priceAvgResultCoef ?? i.resultCoef ?? 0)) * 100
+    }));
+
+    return { id: merged.id, name, value, pl, plPct, instruments };
+  });
+
+  demoMode = false;
+  setDisplay('demoBanner','none');
+  const loadingEl = document.getElementById('loading'); if (loadingEl) loadingEl.style.display = 'none';
+  renderAll();
+}
+
+async function loadData() {
+  const auth = localStorage.getItem('t212_auth');
+  if (!auth) { showDemo(); return; }
+  setStatus('loading');
+
+  try {
+    const makeReq = (path) => fetch('https://t212-proxy.kyrenr.workers.dev' + path, {
+      headers: { 'Authorization': auth }
+    });
+
+    const r = await makeReq('/api/v0/equity/pies');
+    if (r.status === 401) throw new Error('Invalid API key — check Trading212 Settings → API');
+    if (r.status === 429) throw new Error('Rate limited — wait 60 seconds and try again');
+    if (!r.ok) throw new Error(`API error ${r.status} — try refreshing`);
+
+    const data = await r.json();
+    console.log('T212 pies list:', JSON.stringify(data));
+
+    // Load cached pie details from previous sessions
+    let cachedNames = JSON.parse(localStorage.getItem('t212_pie_names') || '{}');
+    let cachedDetails = JSON.parse(localStorage.getItem('t212_pie_details') || '{}');
+
+    // Fetch pie details — use cache where available, only fetch what's missing
+    const detailed = [];
+    const toFetch = data.filter(p => {
+      const cached = cachedDetails[p.id];
+      if (cached && Array.isArray(cached.instruments) && cached.instruments.length > 0) {
+        detailed.push(cached);
+        return false;
+      }
+      return true;
+    });
+
+    // Render cached pies immediately so user sees data right away
+    if (detailed.length > 0 && toFetch.length > 0) {
+      const listById0 = {};
+      data.forEach(p => { listById0[p.id] = p; });
+      buildAndRenderPies(detailed, listById0, cachedNames, data);
+      const loadingEl = document.getElementById('loading'); if (loadingEl) loadingEl.style.display = 'none';
+    }
+
+    for (let i = 0; i < toFetch.length; i++) {
+      const p = toFetch[i];
+      // Delay only between fetches, not before the first one
+      if (i > 0) await new Promise(r => setTimeout(r, 4000));
+
+      let d = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await makeReq(`/api/v0/equity/pies/${p.id}`);
+          const raw = await res.json();
+          if (Array.isArray(raw.instruments)) {
+            d = raw;
+            break;
+          } else {
+            await new Promise(r => setTimeout(r, 6000));
+          }
+        } catch(e) { break; }
+      }
+
+      if (d) {
+        if (d.settings?.name) cachedNames[p.id] = d.settings.name;
+        cachedDetails[p.id] = d;
+        localStorage.setItem('t212_pie_names', JSON.stringify(cachedNames));
+        localStorage.setItem('t212_pie_details', JSON.stringify(cachedDetails));
+        detailed.push(d);
+      } else {
+        const cached = cachedDetails[p.id];
+        if (cached) detailed.push(cached);
+      }
+    }
+
+    // Map list response by ID so we can merge with detail responses
+    const listById = {};
+    data.forEach(p => { listById[p.id] = p; });
+
+    buildAndRenderPies(detailed, listById, cachedNames, data);
+    setStatus('live');
+    recordSnapshot(pies);
+
+  } catch(e) {
+    console.error('loadData error:', e);
+    setStatus('error');
+    // Only show setup card for auth errors, not transient failures
+    const isAuthErr = e.message && (e.message.includes('401') || e.message.includes('Invalid API') || e.message.includes('key'));
+    if (isAuthErr) {
+      showErr('setupErr', e.message);
+      setDisplay('setupCard','block');
+      showDemo();
+    } else {
+      // Show error in header but keep existing pies visible
+      showErr('setupErr', 'Load error: ' + e.message);
+      if (pies.length === 0) showDemo();
+    }
+  }
+}
+
+function cleanTicker(raw) {
+  // Strip exchange suffixes like _EQ, _US_EQ, l_EQ etc
+  const stripped = raw
+    .replace(/l_EQ$/, '')
+    .replace(/_US_EQ$/, '')
+    .replace(/_EQ$/, '')
+    .replace(/_US$/, '')
+    .replace(/_UK$/, '')
+    .replace(/_DE$/, '')
+    .replace(/_FR$/, '');
+
+  // Known ticker to readable name map
+  const names = {
+    'MSFT': 'Microsoft', 'NVDA': 'Nvidia', 'AAPL': 'Apple',
+    'GOOGL': 'Alphabet A', 'GOOG': 'Alphabet C', 'AMZN': 'Amazon',
+    'META': 'Meta Platforms', 'TSLA': 'Tesla', 'ASML': 'ASML',
+    'TSM': 'TSMC', 'AVGO': 'Broadcom', 'AMD': 'AMD',
+    'INTC': 'Intel', 'QCOM': 'Qualcomm', 'MU': 'Micron',
+    'NOW': 'ServiceNow', 'CRM': 'Salesforce', 'ADBE': 'Adobe',
+    'SHOP': 'Shopify', 'PLTR': 'Palantir', 'CRWD': 'CrowdStrike',
+    'PANW': 'Palo Alto', 'NET': 'Cloudflare',
+    'LLY': 'Eli Lilly', 'NVO': 'Novo Nordisk',
+    'BAH': 'Booz Allen', 'GD': 'General Dynamics', 'LMT': 'Lockheed Martin',
+    'RTX': 'RTX Corp', 'NOC': 'Northrop Grumman', 'BA': 'Boeing',
+    'HII': 'Huntington Ingalls', 'LHX': 'L3Harris',
+    'AVAV': 'AeroVironment', 'TDG': 'TransDigm',
+    'RR': 'Rolls-Royce', 'SAF': 'Safran', 'AM': 'Dassault Aviation',
+    'NEE': 'NextEra Energy', 'CCJ': 'Cameco',
+    'BRK': 'Berkshire Hathaway', 'BRKB': 'Berkshire Hathaway B',
+    'HDFC': 'HDFC Bank', 'INFY': 'Infosys',
+    'IONQ': 'IonQ', 'RGTI': 'Rigetti', 'QBTS': 'D-Wave',
+    'MSTR': 'Strategy', 'IREN': 'IREN', 'HIVE': 'Hive Digital',
+    'ASTS': 'AST SpaceMobile', 'RKLB': 'Rocket Lab',
+    'NBIS': 'Nebius Group', 'RDT': 'Reddit', 'MU2': 'Micron',
+    // ETF tickers
+    'DGRG': 'WisdomTree Global Quality',
+    'WCOB': 'WisdomTree Core Physical Gold',
+    'WTEF': 'WisdomTree Enhanced',
+    'WTEM': 'WisdomTree Emerging Markets',
+    'WTJE': 'WisdomTree Japan Equity',
+    'WTEU': 'WisdomTree Europe Equity',
+    'WTUS': 'WisdomTree US Quality',
+    'URNM': 'Sprott Uranium Miners',
+    'URA': 'Global X Uranium',
+    'URNP': 'Sprott Uranium Miners',
+    'NLR': 'VanEck Uranium & Nuclear',
+    'XINA': 'Xtrackers MSCI China',
+    'XIND': 'Xtrackers MSCI Indonesia',
+    'XVIE': 'Xtrackers Vietnam',
+    'IIND': 'iShares MSCI India',
+    'IMEX': 'iShares MSCI Mexico',
+    'ITAI': 'iShares MSCI Taiwan',
+    'IQSA': 'iShares MSCI Saudi Arabia',
+    'IBZL': 'iShares MSCI Brazil',
+    'IMZA': 'iShares MSCI South Africa',
+    'ISAC': 'iShares MSCI World',
+    'SWRD': 'SPDR MSCI World',
+    'VWRP': 'Vanguard FTSE All-World',
+    'VUAG': 'Vanguard S&P 500',
+    'CSPX': 'iShares Core S&P 500',
+  };
+
+  return names[stripped] || names[stripped.toUpperCase()] || stripped;
+}
+
+function calcValue(p) {
+  return p.result?.totalValue
+    || p.totalValue
+    || p.value
+    || ((p.result?.investedValue || 0) + (p.result?.priceAvgResult || 0))
+    || 0;
+}
+
+// ─── DEMO ────────────────────────────────────────────────────────────────────
+function showDemo() {
+  demoMode = true;
+  pies = DEMO;
+  setDisplay('demoBanner','block');
+  renderAll();
+  setStatus('demo');
+}
+
+// ─── RENDER ALL ──────────────────────────────────────────────────────────────
+function renderAll() {
+  const total = pies.reduce((s,p) => s+p.value, 0);
+  const totalPL = pies.reduce((s,p) => s+p.pl, 0);
+  const totalPct = total > 0 ? (totalPL / (total - totalPL)) * 100 : 0;
+
+  document.getElementById('grandTotal').textContent = '£' + fmt(total);
+  const plEl = document.getElementById('totalPL');
+  plEl.innerHTML = `<span class="${totalPL>=0?'pos':'neg'}">${totalPL>=0?'+':''} £${fmt(Math.abs(totalPL))} (${totalPct>=0?'+':''}${totalPct.toFixed(1)}%) total return</span>`;
+  document.getElementById('updatedAt').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+
+  renderRAG(pies);
+  renderPies(pies, total);
+}
+
+// ─── RAG SCORES ──────────────────────────────────────────────────────────────
+function getRAG(pie) {
+  // Green: pl% > 10 and no holding down >30%
+  // Red: pl% < -10 OR any holding down >40%
+  // Amber: everything else
+  const worstHolding = pie.instruments.length > 0
+    ? Math.min(...pie.instruments.map(i => i.pl))
+    : 0;
+  if (pie.plPct < -10 || worstHolding < -40) return 'r';
+  if (pie.plPct > 10 && worstHolding > -30) return 'g';
+  return 'a';
+}
+
+function renderRAG(pies) {
+  const counts = {g:0, a:0, r:0};
+  pies.forEach(p => counts[getRAG(p)]++);
+  document.getElementById('ragG').textContent = counts.g;
+  document.getElementById('ragA').textContent = counts.a;
+  document.getElementById('ragR').textContent = counts.r;
+}
+
+// ─── RENDER PIES ─────────────────────────────────────────────────────────────
+function renderPies(pies, total) {
+  const wrap = document.getElementById('piesWrap');
+  wrap.innerHTML = pies.map(pie => {
+    const rag = getRAG(pie);
+    const ragLabel = {g:'Healthy', a:'Watch', r:'Action needed'}[rag];
+    const pct = total > 0 ? (pie.value/total*100) : 0;
+    const plClass = pie.pl>=0?'pos':'neg';
+    const plSign = pie.pl>=0?'+':'';
+
+    const holdingsHtml = pie.instruments.slice(0,12).map(h => {
+      const hc = h.pl>=0?'pos':'neg';
+      return `<div class="holding-row">
+        <span class="h-name">${h.name}</span>
+        <span class="h-wt">${h.wt.toFixed(1)}%</span>
+        <span class="h-pl ${hc}">${h.pl>=0?'+':''}${h.pl.toFixed(1)}%</span>
+      </div>`;
+    }).join('') + (pie.instruments.length > 12 ? `<div style="font-size:10px;color:var(--muted);padding:6px 0;">+${pie.instruments.length-12} more holdings</div>` : '');
+
+    return `<div class="pie-card health-${rag}" id="pie-${pie.id}">
+      <div class="pie-top" onclick="togglePie(${pie.id})">
+        <div class="pie-row1">
+          <div class="pie-name-wrap">
+            <span class="pie-name">${pie.name}</span>
+            <span class="rag-badge ${rag}">${ragLabel}</span>
+          </div>
+          <div class="pie-val">£${fmt(pie.value)}</div>
+        </div>
+        <div class="pie-row2">
+          <span>${pie.instruments.length} holdings · ${pct.toFixed(1)}% of portfolio</span>
+          <span class="pie-pl ${plClass}">${plSign}£${fmt(Math.abs(pie.pl))} (${plSign}${pie.plPct.toFixed(1)}%)</span>
+        </div>
+      </div>
+      <div class="pie-progress"><div class="pie-prog-fill" style="width:${Math.min(pct*2.5,100)}%"></div></div>
+      <div class="pie-expand">
+        ${holdingsHtml}
+        <button class="pie-claude-btn" id="btn-${pie.id}" onclick="getPieAnalysis(${pie.id}, event)">
+          <div class="mini-spin" id="spin-${pie.id}"></div>
+          <span>✦ Analyse this pie</span>
+        </button>
+        <div class="pie-analysis" id="analysis-${pie.id}">
+          <div class="analysis-hdr">
+            <span>Claude's Assessment</span>
+            <span id="analysis-date-${pie.id}"></span>
+          </div>
+          <div id="analysis-body-${pie.id}"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function togglePie(id) {
+  const card = document.getElementById(`pie-${id}`);
+  card.classList.toggle('open');
+}
+
+// ─── PER-PIE CLAUDE ──────────────────────────────────────────────────────────
+async function getPieAnalysis(pieId, e) {
+  e.stopPropagation();
+  const pie = pies.find(p => p.id == pieId);
+  if (!pie) return;
+
+  const btn = document.getElementById(`btn-${pieId}`);
+  const spin = document.getElementById(`spin-${pieId}`);
+  const panel = document.getElementById(`analysis-${pieId}`);
+  const body = document.getElementById(`analysis-body-${pieId}`);
+  const dateEl = document.getElementById(`analysis-date-${pieId}`);
+
+  btn.disabled = true;
+  spin.style.display = 'block';
+  panel.classList.add('show');
+  body.textContent = 'Analysing...';
+
+  const holdings = pie.instruments.map(h =>
+    `  ${h.name}: ${h.wt.toFixed(1)}% weight, ${h.pl>=0?'+':''}${h.pl.toFixed(1)}% P/L`
+  ).join('\n');
+
+  const totalWeight = pie.instruments.reduce((s,i) => s + i.wt, 0);
+
+  const prompt = `You are a world-class portfolio manager with deep expertise in global equities, ETFs, sector rotation, and macro analysis. You are decisive, macro-aware, valuation-conscious, and unafraid to make bold calls.
+
+You are reviewing one pie in a UK retail investor's Trading212 portfolio. Aggressive growth strategy, 3-5 year horizon, high risk tolerance. Total portfolio ~£47k on T212, plus £68k AJ Bell ISA. Returning to work in ~3 months.
+
+PIE: ${pie.name}
+Value: £${fmt(pie.value)}
+P/L: ${pie.pl>=0?'+':''}£${fmt(Math.abs(pie.pl))} (${pie.plPct>=0?'+':''}${pie.plPct.toFixed(1)}%)
+
+Current holdings (name: current weight, P/L):
+${holdings}
+
+Your response MUST include a complete target allocation table for this pie. Every holding must be listed with its new target weight. The weights must add up to exactly 100%. If you are adding a new position, include it in the table and reduce others to compensate. If you are removing a position, redistribute that weight to other holdings.
+
+Respond in plain text only. No bullet points, dashes, asterisks or markdown. Max 280 words.
+
+First, one paragraph assessing the pie and macro backdrop. Then write the target allocation in this exact format, one holding per line:
+TARGET ALLOCATION:
+[Holding name] [new %]
+[Holding name] [new %]
+(list every holding including unchanged ones, new additions, and exclude removed ones)
+TOTAL: 100%
+
+End with one sentence on the single most important Trading212 action this week.`;
+
+  try {
+    const claudeKey = localStorage.getItem('claude_key') || '';
+    if (!claudeKey) { body.textContent = 'Add your Claude API key in setup to use analysis.'; btn.classList.remove('loading'); btn.disabled=false; return; }
+    const r = await fetch('https://t212-proxy.kyrenr.workers.dev/claude/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':claudeKey},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1200,
+        messages:[{role:'user', content: prompt}]
+      })
+    });
+    const data = await r.json();
+    const text = data.content?.[0]?.text || data.error?.message || 'No response.';
+    body.textContent = text;
+    dateEl.textContent = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    localStorage.setItem(`pie_analysis_${pieId}`, JSON.stringify({text, date: new Date().toISOString()}));
+  } catch(err) {
+    body.textContent = 'Could not load analysis: ' + err.message;
+  }
+
+  btn.disabled = false;
+  spin.style.display = 'none';
+}
+
+// ─── OVERALL CLAUDE ──────────────────────────────────────────────────────────
+async function getOverallAnalysis() {
+  const btn = document.getElementById('mainClaudeBtn');
+  const panel = document.getElementById('mainAnalysis');
+  const body = document.getElementById('mainAnalysisBody');
+  const dateEl = document.getElementById('mainAnalysisDate');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  panel.classList.add('show');
+  body.textContent = 'Analysing all pies...';
+
+  const pieSummary = pies.map(p =>
+    `${p.name}: £${fmt(p.value)}, ${p.pl>=0?'+':''}${p.plPct.toFixed(1)}% return, ${p.instruments.length} holdings`
+  ).join('\n');
+
+  const allHoldings = pies.map(p => {
+    const h = p.instruments.map(i => `    ${i.name}: ${i.wt.toFixed(1)}% weight, ${i.pl>=0?'+':''}${i.pl.toFixed(1)}% P/L`).join('\n');
+    return `${p.name} (£${fmt(p.value)}, ${p.plPct>=0?'+':''}${p.plPct.toFixed(1)}%):\n${h || '    No holdings loaded'}`;
+  }).join('\n\n');
+
+  const prompt = `You are a top-tier portfolio manager: macro-disciplined like Druckenmiller, valuation-conscious like Buffett, growth-aware like Fisher. Give precise, actionable, unhedged advice grounded in current market realities.
+
+Today: ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}.
+
+KEY MARKET CONTEXT:
+- Gold near all-time highs (~$3,200/oz). Do NOT recommend adding gold. High gold = late-cycle, not a buy.
+- US equities ~22x forward P/E. Be selective.
+- European defence (Rheinmetall, BAE, Saab) in structural NATO rearmament uptrend — multi-year theme.
+- Uranium thesis intact — AI data centre power demand. But ETFs trade at NAV premium, size carefully.
+- Quantum stocks (IonQ, D-Wave, Rigetti) — speculative, no near-term earnings, high drawdown risk.
+- China rallied on stimulus hope — structural risks remain, do not increase exposure.
+
+INVESTOR: UK retail, aggressive growth, 3-5yr horizon, high risk tolerance. Returning to work in ~3 months. Emergency fund separate. This portfolio is the growth vehicle.
+
+PORTFOLIO (£${fmt(pies.reduce((s,p)=>s+p.value,0))} total):
+${pieSummary}
+
+FULL HOLDINGS PER PIE (name: current % weight, P&L):
+${allHoldings}
+
+OUTPUT FORMAT — follow this exactly, no deviations:
+
+For each pie that needs changes, write one line of context then list actions. EACH ACTION must be on its own line in one of these exact formats:
+PIE: [Pie Name]
+SELL: [Holding Name] | from [X]% to [Y]% | [reason max 8 words]
+REDUCE: [Holding Name] | from [X]% to [Y]% | [reason max 8 words]
+BUY: [Holding Name] | from [X]% to [Y]% | [reason max 8 words]
+
+After all pies, end with:
+PRIORITY: [single most important action this week, one sentence]
+
+RULES:
+- Use holding names exactly as listed above
+- from % = current weight shown in holdings. to % = your recommended target
+- SELL means reduce to a lower %, not necessarily 0. Always specify the target %.
+- After all SELLs and REDUCEs in a pie, the freed % must be redistributed to BUYs so the pie stays at 100%
+- Only list pies that need changes. Skip pies that are fine.
+- No markdown, no bullets, no asterisks. Plain text only. Max 500 words.`;
+
+
+  try {
+    const claudeKey = localStorage.getItem('claude_key') || '';
+    if (!claudeKey) { body.textContent = 'Add your Claude API key in setup to use analysis.'; btn.classList.remove('loading'); btn.disabled=false; return; }
+    const r = await fetch('https://t212-proxy.kyrenr.workers.dev/claude/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':claudeKey},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:2000,
+        messages:[{role:'user', content: prompt}]
+      })
+    });
+    const data = await r.json();
+    const text = data.content?.[0]?.text || data.error?.message || 'No response.';
+    body.textContent = text;
+    const now = new Date();
+    dateEl.textContent = now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    localStorage.setItem('main_analysis', JSON.stringify({text, date: now.toISOString()}));
+
+    // Extract actions from analysis and update checklist
+    extractActions(text);
+
+  } catch(err) {
+    body.textContent = 'Could not load analysis: ' + err.message;
+  }
+
+  btn.classList.remove('loading');
+  btn.disabled = false;
+}
+
+function extractActions(analysisText) {
+  try {
+    // Data model: { id, pie, tag, holding, fromPct, toPct, reason }
+    const actions = [];
+    const priority = null;
+    let currentPie = null;
+    let priorityText = null;
+    const lines = analysisText.split('\n');
+
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+
+      // PIE: Name
+      const pieM = line.match(/^PIE:\s*(.+)$/i);
+      if (pieM) { currentPie = pieM[1].trim(); continue; }
+
+      // PRIORITY: ...
+      const prioM = line.match(/^PRIORITY:\s*(.+)$/i);
+      if (prioM) { priorityText = prioM[1].trim(); continue; }
+
+      // SELL: Name | from X% to 0% | reason
+      // REDUCE: Name | from X% to Y% | reason
+      // BUY: Name | from X% to Y% | reason
+      const actionM = line.match(/^(SELL|REDUCE|BUY):\s*([^|]+?)\s*\|\s*from\s*([\d.]+)%\s*to\s*([\d.]+)%\s*\|\s*(.+)$/i);
+      if (actionM) {
+        const tag = actionM[1].toUpperCase();
+        const holding = friendlyName(actionM[2].trim());
+        const fromPct = parseFloat(actionM[3]);
+        const toPct = parseFloat(actionM[4]);
+        const reason = actionM[5].trim();
+        if (holding) {
+          actions.push({
+            id: 'ai_' + Date.now() + '_' + actions.length,
+            pie: currentPie || 'Portfolio',
+            tag, holding, fromPct, toPct, reason
+          });
+        }
+        continue;
+      }
+
+      // Fallback: SELL/BUY/REDUCE without from/to (less structured response)
+      const simpleM = line.match(/^(SELL|REDUCE|BUY):\s*([^|]+?)(?:\s*\|\s*(.+))?$/i);
+      if (simpleM) {
+        const tag = simpleM[1].toUpperCase();
+        const holding = friendlyName(simpleM[2].trim());
+        const reason = (simpleM[3]||'').trim();
+        // Try to extract any % from reason
+        const pctM = reason.match(/to\s*([\d.]+)%/i);
+        if (holding) {
+          actions.push({
+            id: 'ai_' + Date.now() + '_' + actions.length,
+            pie: currentPie || 'Portfolio',
+            tag, holding,
+            fromPct: null,
+            toPct: pctM ? parseFloat(pctM[1]) : null,
+            reason
+          });
+        }
+      }
+    }
+
+    // Store and render
+    const stored = { actions, priorityText, generatedAt: new Date().toISOString() };
+    localStorage.setItem('action_brief', JSON.stringify(stored));
+    // Legacy compat — also clear old format
+    localStorage.removeItem('dynamic_checklist');
+    renderActionBrief(stored);
+    console.log('Action brief:', actions.length, 'actions across', new Set(actions.map(a=>a.pie)).size, 'pies');
+  } catch(e) {
+    console.error('extractActions failed:', e);
+  }
+}
+
+function renderDynamicChecklist(items) {
+  // Legacy shim — convert old format to new and re-render
+  const stored = { actions: items.map(i => ({
+    id: i.id, pie: i.pie || 'Portfolio',
+    tag: i.tag, holding: i.name || i.text || '',
+    fromPct: null, toPct: null, reason: i.reason || ''
+  })), priorityText: null };
+  renderActionBrief(stored);
+}
+
+function renderActionBrief(stored) {
+  const wrap = document.getElementById('checkItems');
+  const { actions = [], priorityText } = stored;
+  const state = JSON.parse(localStorage.getItem('brief_state') || '{}');
+
+  // Top-level count: pies done vs total
+  const pieNames = [...new Set(actions.map(a => a.pie))];
+  const piesDone = pieNames.filter(p => state['pie_done_' + p]).length;
+  const prog = document.getElementById('checkProgress');
+  if (prog) prog.innerHTML = `<span>${piesDone}</span> / ${pieNames.length} pies done`;
+  if (el('checkBar')) el('checkBar').style.width = (pieNames.length ? (piesDone/pieNames.length*100) : 0) + '%';
+
+  if (!actions.length) {
+    wrap.innerHTML = '<div class="brief-empty"><div class="brief-empty-icon">✦</div>Run <strong>Analyse All Pies</strong> above to generate your personalised action brief.</div>';
+    return;
+  }
+
+  // Group actions by pie, preserving order
+  const pieMap = {};
+  for (const a of actions) {
+    if (!pieMap[a.pie]) pieMap[a.pie] = [];
+    pieMap[a.pie].push(a);
+  }
+
+  const tagOrder = ['SELL','REDUCE','BUY'];
+  const pillMeta = {
+    SELL:   { cls: 'ab-pill-sell',   label: 'SELL' },
+    REDUCE: { cls: 'ab-pill-reduce', label: 'TRIM' },
+    BUY:    { cls: 'ab-pill-buy',    label: 'BUY'  },
+  };
+
+  let html = '';
+
+  for (const [pieName, pieActions] of Object.entries(pieMap)) {
+    const isDone = !!state['pie_done_' + pieName];
+    const pieId  = 'pie_' + pieName.replace(/\W+/g, '_');
+
+    // Sort: sells first, then reduces, then buys
+    const sorted = [...pieActions].sort((a, b) =>
+      (tagOrder.indexOf(a.tag) > -1 ? tagOrder.indexOf(a.tag) : 99) -
+      (tagOrder.indexOf(b.tag) > -1 ? tagOrder.indexOf(b.tag) : 99)
+    );
+
+    html += `<div class="ab-pie-section ${isDone ? 'ab-complete' : ''}" id="${pieId}">`;
+    html += `<div class="ab-card-inner">`;
+
+    // ── Left column: pie name + big checkbox ──────────────────────────────────
+    html += `<div class="ab-pie-left-col" onclick="togglePieDone('${pieName}')">`;
+    html += `<div class="ab-pie-checkbox"><span class="ab-pie-check-tick">✓</span></div>`;
+    html += `<div class="ab-pie-label">${pieName}</div>`;
+    html += `</div>`;
+
+    // ── Right column: one row per action ─────────────────────────────────────
+    html += `<div class="ab-pie-right-col">`;
+
+    for (const action of sorted) {
+      const pill = pillMeta[action.tag] || pillMeta.BUY;
+      const hasPct = action.fromPct != null && action.toPct != null;
+      const isDown = hasPct && action.toPct < action.fromPct;
+
+      html += `<div class="ab-row">`;
+      html += `<span class="ab-pill ${pill.cls}">${pill.label}</span>`;
+      html += `<span class="ab-stock-name">${action.holding}</span>`;
+      if (hasPct) {
+        html += `<span class="ab-pct-change ${isDown ? 'down' : 'up'}">${action.fromPct}% → ${action.toPct}%</span>`;
+      }
+      html += `</div>`;
+    }
+
+    html += `</div>`; // end right col
+    html += `</div>`; // end card-inner
+    html += `</div>`; // end pie-section
+  }
+
+  // Priority call at the bottom
+  if (priorityText) {
+    html += `<div class="ab-priority"><span class="ab-priority-star">★</span><div class="ab-priority-text">${priorityText}</div></div>`;
+  }
+
+  wrap.innerHTML = html;
+}
+
+function toggleAction(id) {
+  // Legacy no-op — ticking is now per-pie
+}
+
+function togglePieDone(pieName) {
+  const state = JSON.parse(localStorage.getItem('brief_state') || '{}');
+  const key = 'pie_done_' + pieName;
+  state[key] = !state[key];
+  localStorage.setItem('brief_state', JSON.stringify(state));
+  const stored = JSON.parse(localStorage.getItem('action_brief') || 'null');
+  if (stored) renderActionBrief(stored);
+}
+
+function togglePieSection(pieId) {
+  // Legacy no-op
+}
+
+function loadSavedAnalysis() {
+  const saved = localStorage.getItem('main_analysis');
+  if (saved) {
+    try {
+      const {text, date} = JSON.parse(saved);
+      const d = new Date(date);
+      if ((Date.now() - d.getTime()) < 7*24*60*60*1000) {
+        document.getElementById('mainAnalysisBody').textContent = text;
+        document.getElementById('mainAnalysisDate').textContent =
+          d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) + ' (saved)';
+        document.getElementById('mainAnalysis').classList.add('show');
+        // Restore action brief from storage, or re-extract if missing
+        const savedBrief = localStorage.getItem('action_brief');
+        if (savedBrief) {
+          try { renderActionBrief(JSON.parse(savedBrief)); } catch(e) { extractActions(text); }
+        } else {
+          extractActions(text);
+        }
+      }
+    } catch(e) {}
+  }
+  // Restore pie analyses
+  pies.forEach(p => {
+    const saved = localStorage.getItem(`pie_analysis_${p.id}`);
+    if (saved) {
+      try {
+        const {text, date} = JSON.parse(saved);
+        const d = new Date(date);
+        if ((Date.now()-d.getTime()) < 7*24*60*60*1000) {
+          const body = document.getElementById(`analysis-body-${p.id}`);
+          const dateEl = document.getElementById(`analysis-date-${p.id}`);
+          const panel = document.getElementById(`analysis-${p.id}`);
+          if (body) { body.textContent = text; panel.classList.add('show'); dateEl.textContent = d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' (saved)'; }
+        }
+      } catch(e) {}
+    }
+  });
+}
+
+// ─── CHECKLIST ───────────────────────────────────────────────────────────────
+function renderChecklist() {
+  const wrap = document.getElementById('checkItems');
+  const done = CHECKLIST.filter(c => checkState[c.id]).length;
+  const total = CHECKLIST.length;
+  document.getElementById('checkProgress').textContent = `${done} / ${total} done`;
+  if(el('checkBar')) el('checkBar').style.width = `${(done/total)*100}%`;
+
+  wrap.innerHTML = CHECKLIST.map(c => {
+    const isDone = !!checkState[c.id];
+    const tagClass = {sell:'ct-sell',buy:'ct-buy',move:'ct-move',reduce:'ct-reduce'}[c.tag];
+    const tagLabel = {sell:'Sell',buy:'Buy/Add',move:'Move',reduce:'Reduce'}[c.tag];
+    return `<div class="check-item ${isDone?'done':''}" onclick="toggleCheck('${c.id}')">
+      <div class="check-box"><span class="check-tick">✓</span></div>
+      <div class="check-content">
+        <div class="check-action">
+          <span class="check-tag ${tagClass}">${tagLabel}</span>${c.action}
+        </div>
+        <div class="check-pie">${c.pie} · ${c.note}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCheck(id) {
+  checkState[id] = !checkState[id];
+  localStorage.setItem('checkState', JSON.stringify(checkState));
+  renderChecklist();
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function fmt(n) {
+  return n.toLocaleString('en-GB',{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function setStatus(s) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusTxt');
+  dot.className = 'dot';
+  if (s==='live') { txt.textContent='Live'; }
+  else if (s==='demo') { dot.className='dot amber'; txt.textContent='Demo'; }
+  else if (s==='loading') { dot.className='dot amber'; txt.textContent='Loading'; }
+  else if (s==='error') { dot.className='dot red'; txt.textContent='Error'; }
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 5000);
+}
+</script>
+<script>
+// ─── PIN LOGIC ────────────────────────────────────────────────────────────────
+const CORRECT_PIN = '1996'; // Change this to your preferred PIN
+let pinEntry = '';
+let pinUnlocked = false;
+
+function pinPress(digit) {
+  if (pinEntry.length >= 4) return;
+  pinEntry += digit;
+  updatePinDots();
+  if (pinEntry.length === 4) {
+    setTimeout(checkPin, 120);
+  }
+}
+
+function pinDel() {
+  pinEntry = pinEntry.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pinErr').textContent = '';
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.classList.toggle('filled', i < pinEntry.length);
+    dot.classList.remove('error');
+  }
+}
+
+function checkPin() {
+  if (pinEntry === CORRECT_PIN) {
+    setDisplay('pinScreen','none');
+    pinUnlocked = true;
+    localStorage.setItem('pin_ok', Date.now().toString());
+    // Init app now if it hasn't loaded yet
+    if (!appInited) initApp();
+  } else {
+    // Wrong — shake dots red and reset
+    for (let i = 0; i < 4; i++) {
+      document.getElementById('pd' + i).classList.add('error');
+    }
+    document.getElementById('pinErr').textContent = 'Incorrect PIN';
+    setTimeout(() => {
+      pinEntry = '';
+      updatePinDots();
+      document.getElementById('pinErr').textContent = '';
+    }, 800);
+  }
+}
+
+// Use both DOMContentLoaded and window.load for Safari compatibility
+function tryAutoUnlock() {
+  if (appInited) return;
+  try {
+    const pinTs = parseInt(localStorage.getItem('pin_ok') || '0');
+    if (pinTs && (Date.now() - pinTs) < 24 * 60 * 60 * 1000) {
+      setDisplay('pinScreen', 'none');
+      pinUnlocked = true;
+      initApp();
+    }
+  } catch(e) {
+    // localStorage unavailable (Safari private mode) — skip PIN
+    setDisplay('pinScreen', 'none');
+    pinUnlocked = true;
+    initApp();
+  }
+}
+document.addEventListener('DOMContentLoaded', tryAutoUnlock);
+window.addEventListener('load', tryAutoUnlock);
+
+// ─── TAB SWITCHING ────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['portfolio','history'][i] === name);
+  });
+  document.querySelectorAll('.tab-section').forEach(s => {
+    s.classList.toggle('active', s.id === 'tab-' + name);
+  });
+  if (name === 'history') renderHistory();
+}
+
+// ─── HISTORY RECORDING ────────────────────────────────────────────────────────
+function recordSnapshot(pies) {
+  if (!pies || pies.length === 0) return;
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  let history = {};
+  try { history = JSON.parse(localStorage.getItem('t212_history') || '{}'); } catch(e) {}
+
+  const total = pies.reduce((s, p) => s + p.value, 0);
+  const pieData = {};
+  pies.forEach(p => { pieData[p.name] = p.value; });
+
+  history[today] = { total, pies: pieData };
+
+  // Keep max 365 days
+  const keys = Object.keys(history).sort();
+  if (keys.length > 365) {
+    keys.slice(0, keys.length - 365).forEach(k => delete history[k]);
+  }
+  localStorage.setItem('t212_history', JSON.stringify(history));
+}
+
+// ─── CHART COLOURS ────────────────────────────────────────────────────────────
+const PIE_COLOURS = [
+  '#7c6dfa','#00e5a0','#ffb830','#ff4d6d','#38bdf8','#f97316','#a78bfa','#34d399'
+];
+
+let totalChartInst = null;
+let pieChartInst = null;
+let selectedPieName = null;
+
+// ─── RENDER HISTORY TAB ───────────────────────────────────────────────────────
+function renderHistory() {
+  let history = {};
+  try { history = JSON.parse(localStorage.getItem('t212_history') || '{}'); } catch(e) {}
+
+  const dates = Object.keys(history).sort();
+
+  // ── Total chart ──
+  const totalEmpty = document.getElementById('totalChartEmpty');
+  const totalCanvas = document.getElementById('totalChart');
+
+  if (dates.length < 2) {
+    totalEmpty.style.display = 'block';
+    totalCanvas.style.display = 'none';
+  } else {
+    totalEmpty.style.display = 'none';
+    totalCanvas.style.display = 'block';
+    const labels = dates.map(d => {
+      const [,m,day] = d.split('-');
+      return `${day}/${m}`;
+    });
+    const values = dates.map(d => history[d].total);
+
+    if (totalChartInst) totalChartInst.destroy();
+    totalChartInst = new Chart(totalCanvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          borderColor: '#00e5a0',
+          backgroundColor: 'rgba(0,229,160,0.08)',
+          borderWidth: 2,
+          pointRadius: dates.length > 30 ? 0 : 3,
+          pointBackgroundColor: '#00e5a0',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#5a5a72', font: { family: 'DM Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { ticks: { color: '#5a5a72', font: { family: 'DM Mono', size: 10 }, callback: v => '£' + Math.round(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        }
+      }
+    });
+
+    // Stats
+    const first = values[0], last = values[values.length-1];
+    const change = last - first, changePct = (change/first*100).toFixed(1);
+    const peak = Math.max(...values);
+    document.getElementById('historyStats').innerHTML = `
+      <div class="hstat"><div class="hstat-lbl">Since First Record</div><div class="hstat-val" style="color:${change>=0?'#00e5a0':'#ff4d6d'}">${change>=0?'+':''}£${Math.abs(change).toFixed(0)} (${changePct}%)</div></div>
+      <div class="hstat"><div class="hstat-lbl">Peak Value</div><div class="hstat-val">£${Math.round(peak).toLocaleString()}</div></div>
+    `;
+  }
+
+  // ── Pie selector ──
+  const allPieNames = new Set();
+  dates.forEach(d => Object.keys(history[d].pies || {}).forEach(n => allPieNames.add(n)));
+  const names = [...allPieNames];
+
+  const selectorWrap = document.getElementById('pieSelectorWrap');
+  selectorWrap.innerHTML = names.map((n, i) =>
+    `<button class="pie-sel-btn${n===selectedPieName?' active':''}" onclick="selectPieChart('${n.replace(/'/g,"\'")}',${i})">${n}</button>`
+  ).join('');
+
+  if (selectedPieName) renderPieChart(selectedPieName, history, dates, names.indexOf(selectedPieName));
+}
+
+function selectPieChart(name, colIdx) {
+  selectedPieName = name;
+  document.querySelectorAll('.pie-sel-btn').forEach((b,i) => b.classList.toggle('active', i===colIdx));
+  let history = {};
+  try { history = JSON.parse(localStorage.getItem('t212_history') || '{}'); } catch(e) {}
+  const dates = Object.keys(history).sort();
+  renderPieChart(name, history, dates, colIdx);
+}
+
+function renderPieChart(name, history, dates, colIdx) {
+  const canvas = document.getElementById('pieChart');
+  const empty = document.getElementById('pieChartEmpty');
+  document.getElementById('pieChartTitle').textContent = name;
+
+  const relevantDates = dates.filter(d => history[d].pies?.[name] !== undefined);
+  if (relevantDates.length < 2) {
+    empty.style.display = 'block';
+    canvas.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  canvas.style.display = 'block';
+
+  const labels = relevantDates.map(d => { const [,m,day] = d.split('-'); return `${day}/${m}`; });
+  const values = relevantDates.map(d => history[d].pies[name]);
+  const colour = PIE_COLOURS[colIdx % PIE_COLOURS.length];
+
+  if (pieChartInst) pieChartInst.destroy();
+  pieChartInst = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: colour,
+        backgroundColor: colour.replace(')', ',0.08)').replace('rgb','rgba'),
+        borderWidth: 2,
+        pointRadius: relevantDates.length > 30 ? 0 : 3,
+        pointBackgroundColor: colour,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#5a5a72', font: { family: 'DM Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#5a5a72', font: { family: 'DM Mono', size: 10 }, callback: v => '£' + Math.round(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
